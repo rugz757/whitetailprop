@@ -1,0 +1,39 @@
+name: Deploy to AWS Lightsail
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up AWS CLI
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
+
+    - name: Set up SSH
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.LIGHTSAIL_SSH_PRIVATE_KEY }}" > ~/.ssh/lightsail_key
+        chmod 600 ~/.ssh/lightsail_key
+        echo -e "Host *\n  StrictHostKeyChecking no\n  UserKnownHostsFile /dev/null" > ~/.ssh/config
+
+    - name: Deploy to Lightsail
+      run: |
+        # SSH into Lightsail and deploy code
+        ssh -i ~/.ssh/lightsail_key ubuntu@${{ secrets.LIGHTSAIL_INSTANCE_IP }} << 'EOF'
+          cd /path/to/your/app
+          git pull origin main
+          # Install dependencies or run deployment commands
+          npm install  # or other commands, e.g., Docker, etc.
+          pm2 restart app  # or any process manager you use
+        EOF
